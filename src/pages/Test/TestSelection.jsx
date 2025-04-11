@@ -262,55 +262,6 @@ const TestSelection = () => {
   //   console.log("Saving to sessionStorage:", updatedData);
   //   sessionStorage.setItem("sectionMarkingData", JSON.stringify(updatedData));
   // };
-  // const handleTopicsSelected = (chapterNames = [], topicNames = []) => {
-  //   if (!sectionData[activeSectionId]) {
-  //     console.warn("Missing sectionData for", activeSectionId);
-  //     return;
-  //   }
-  //   const updatedSection = JSON.parse(
-  //     JSON.stringify(sectionData[activeSectionId])
-  //   ); // deep clone
-  //   const updatedSubjects = [...(updatedSection.subjectSelections || [])];
-
-  //   const subjectIndex = updatedSubjects.findIndex(
-  //     (s) => s.subjectName === selectedSubject
-  //   );
-
-  //   if (subjectIndex !== -1) {
-  //     const chapterWithTopics = chapterNames.map((chapter) => {
-  //       const relatedTopics = topicNames
-  //         .filter((topic) => topic.chapterName === chapter.chapterName)
-  //         .map((topic) => ({
-  //           topicName: topic.topicName,
-  //           numberOfQuestions: topic.numberOfQuestions || 0,
-  //         }));
-
-  //       return {
-  //         chapterName: chapter.chapterName,
-  //         topic: relatedTopics,
-  //       };
-  //     });
-
-  //     updatedSubjects[subjectIndex] = {
-  //       ...updatedSubjects[subjectIndex],
-  //       chapter: chapterWithTopics,
-  //     };
-
-  //     const updatedData = {
-  //       ...sectionData,
-  //       [activeSectionId]: {
-  //         ...updatedSection,
-  //         subjectSelections: updatedSubjects,
-  //       },
-  //     };
-
-  //     setSectionData(updatedData);
-  //     sessionStorage.setItem("sectionMarkingData", JSON.stringify(updatedData));
-  //   } else {
-  //     console.warn("Selected subject not found in subjectSelections");
-  //   }
-  // };
-
   const handleTopicsSelected = (chapterNames = [], topicNames = []) => {
     const updatedSection = { ...sectionData[activeSectionId] };
     const updatedSubjects = Array.isArray(updatedSection.subjectSelections)
@@ -322,7 +273,7 @@ const TestSelection = () => {
     );
 
     if (subjectIndex !== -1) {
-      // Build chapter->topic tree properly
+      // For each selected chapter, map it to the correct topics
       const chapterWithTopics = chapterNames.map((chapter) => {
         const relatedTopics = topicNames.filter(
           (topic) =>
@@ -333,7 +284,7 @@ const TestSelection = () => {
         return {
           chapterName: chapter.chapterName || chapter,
           topic: relatedTopics.map((topic) => ({
-            topicName: topic.topicName, // ✅ ensure this exists
+            topicName: topic,
             numberOfQuestions:
               selectionType === "Auto"
                 ? topic.numberOfQuestions || 0
@@ -342,7 +293,6 @@ const TestSelection = () => {
         };
       });
 
-      // Update only current subject
       updatedSubjects[subjectIndex] = {
         ...updatedSubjects[subjectIndex],
         chapter: chapterWithTopics,
@@ -356,7 +306,10 @@ const TestSelection = () => {
         },
       };
 
+      // Save updated data to sessionStorage
       sessionStorage.setItem("sectionMarkingData", JSON.stringify(updatedData));
+
+      // Update the state with the new section data
       setSectionData(updatedData);
     } else {
       console.warn("Selected subject not found:", selectedSubject);
@@ -484,6 +437,7 @@ const TestSelection = () => {
   // };
 
   const handleAddSubject = (value) => {
+    // Find the subject object from the fetched subjects list
     const selectedSubjectObj = subjects.find(
       (sub) => sub.subjectName === value
     );
@@ -491,18 +445,22 @@ const TestSelection = () => {
 
     const updated = { ...sectionData };
 
-    // ✅ Overwrite: Only this subject should be active for the section
-    updated[activeSectionId].subjectSelections = [
-      {
-        ...selectedSubjectObj,
-        chapter: [],
-      },
-    ];
+    // Check if the subject is already in the selections
+    if (
+      !updated[activeSectionId].subjectSelections.some(
+        (s) => s.subjectName === value
+      )
+    ) {
+      // Add the selected subject to the subjectSelections array
+      updated[activeSectionId].subjectSelections.push(selectedSubjectObj);
+      setSectionData(updated);
+      sessionStorage.setItem("sectionMarkingData", JSON.stringify(updated));
+    }
 
-    setSectionData(updated);
-    sessionStorage.setItem("sectionMarkingData", JSON.stringify(updated));
+    // Update the selectedSubject to the chosen value (this ensures it's Math or the correct subject)
     setSelectedSubject(value);
-    setAddNew(false);
+
+    setAddNew(false); // Close the "add new subject" input
   };
 
   const selectedChapters = chapters[selectedSubject] || [];
