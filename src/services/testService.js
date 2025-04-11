@@ -335,49 +335,55 @@ const testServices = {
   },
 
   uploadExcelFile: async (testId, formData) => {
-    try{
+    try {
       const response = await axios.post(
         `${config.BASE_URL_TEST}newTest/upload-question-excel/${testId}`,
         formData
       );
-  
+
       return response.data;
+    } catch (error) {
+      console.error("Error uploading file", error);
+      return { success: false, message: "Error uploading file" };
     }
-  catch(error){
-    console.error("Error uploading file", error);
-    return { success: false, message: "Error uploading file" };
-  }
   },
   createSections: async (testId, data) => {
-    try{
+    try {
       const response = await axios.post(
         `${config.BASE_URL_TEST}newTest/create-section/${testId}`,
         data
       );
-  
+
       return response.data;
+    } catch (error) {
+      console.error("Error uploading file", error);
+      return { success: false, message: "Error uploading file" };
     }
-  catch(error){
-    console.error("Error uploading file", error);
-    return { success: false, message: "Error uploading file" };
-  }
   },
 
   AddSectionDetails: async (testId, data) => {
-    try{
+    try {
       const response = await axios.post(
         `${config.BASE_URL_TEST}newTest/add-details/${testId}`,
         data
       );
-  
+
       return response.data;
+    } catch (error) {
+      console.error("Error uploading file", error);
+      return { success: false, message: "Error uploading file" };
     }
-  catch(error){
-    console.error("Error uploading file", error);
-    return { success: false, message: "Error uploading file" };
-  }
   },
-  
+
+  updateSectionMeta: async (testId, sectionId, payload) => {
+    return axios.put(
+      `${config.BASE_URL_TEST}newTest/update-section-meta/${testId}/${sectionId}`,
+      payload
+    );
+  },
+  updateSectionDetails: (sectionId, data) => {
+    return axios.put(`/api/section/${sectionId}`, data);
+  },
 };
 
 export default testServices;

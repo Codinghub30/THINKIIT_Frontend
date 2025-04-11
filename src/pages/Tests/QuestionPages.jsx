@@ -72,24 +72,24 @@ const QuestionPages = () => {
   const [allSections, setAllSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState(null);
 
-  const fetchTestDataById = async (id) => {
-    try {
-      const data = await testServices.getTestById(id);
-      if (data?.data) {
-        // setSavedSections(data.data);
-        // setActiveSection(data.data.sections[0]?._id || "");
-      } else {
-        // setSavedSections([]);
-        // toast.error("No sections found.");
-      }
-    } catch (error) {
-      //   toast.error("Failed to fetch test details.");
-    }
-  };
+  // const fetchTestDataById = async (id) => {
+  //   try {
+  //     const data = await testServices.getTestById(id);
+  //     if (data?.data) {
+  //       // setSavedSections(data.data);
+  //       // setActiveSection(data.data.sections[0]?._id || "");
+  //     } else {
+  //       // setSavedSections([]);
+  //       // toast.error("No sections found.");
+  //     }
+  //   } catch (error) {
+  //     //   toast.error("Failed to fetch test details.");
+  //   }
+  // };
 
-  useEffect(() => {
-    fetchTestDataById(id);
-  }, [id]);
+  // useEffect(() => {
+  //   fetchTestDataById(id);
+  // }, [id]);
 
   // useEffect(() => {
   //   const fetchQuestions = async () => {
@@ -195,7 +195,7 @@ const QuestionPages = () => {
               questionType: (sessionSection.questionType || "SCQ").trim(),
             };
 
-            console.log("Auto mode fetching with payload:", payload);
+            console.log("Payload payload:", payload);
 
             // Fetch the filtered questions
             const response = await testServices.GetFilteredQuestions(payload);
@@ -242,6 +242,8 @@ const QuestionPages = () => {
         if (!response.success || !response.data) return;
 
         const testData = response.data;
+        console.log("thes testData", testData);
+
         setTestDetails(testData);
 
         // Fetch all questions for each section
@@ -249,23 +251,27 @@ const QuestionPages = () => {
           testData.sections.map(async (section) => {
             const sectionId = section._id;
             const sessionSection = sectionMarkingData[sectionId] || {};
+            // const subjectData = sessionSection.subjectSelections?.[0];
+            const subjectData = section.subjects?.[0];
+
+            console.log("the subjectData", subjectData);
 
             const payload = {
-              Subject: (
-                sessionSection.subjectSelections?.[0]?.subjectName ||
-                sessionSection.subjectSelections?.[0] ||
-                ""
-              ).trim(),
-              questionType: (sessionSection.questionType || "").trim(),
+              Subject: subjectData?.subjectName || "",
+              questionType: section?.questionType || "SCQ",
               chapter:
-                sessionSection.chapter?.map((c) =>
-                  typeof c === "string" ? c.trim() : c.chapterName.trim()
+                subjectData?.chapter?.map((c) =>
+                  typeof c === "string" ? c.trim() : c.chapterName?.trim()
                 ) || [],
               topic:
-                sessionSection.topic?.map((t) =>
-                  typeof t === "string" ? t.trim() : t.topicName.trim()
-                ) || [],
+                subjectData?.chapter
+                  ?.flatMap((c) => c.topic || [])
+                  ?.map((t) =>
+                    typeof t === "string" ? t.trim() : t.topicName?.trim()
+                  ) || [],
             };
+
+            console.log("the test payload", payload);
 
             const result = await testServices.GetFilteredQuestions(payload);
             return { sectionId: section._id, questions: result };
@@ -793,7 +799,9 @@ const QuestionPages = () => {
                 const imageMatch = question.English?.match(
                   /\\includegraphics\[.*?\]{(.*?)}/
                 );
+
                 const imageId = imageMatch ? imageMatch[1] : null;
+
                 const cleanQuestion = question.English?.replace(
                   /\\\\/g,
                   " \\[ \n \\] "
@@ -881,9 +889,14 @@ const QuestionPages = () => {
                       question.Images &&
                       question.Images[imageId] ? (
                         <img
-                          src={`data:image/jpeg;base64,${question.Images[imageId]}`}
-                          alt="Question Diagram"
-                          className="w-[250px] h-[200px] border rounded-lg shadow-sm"
+                          src={
+                            imageId ? `/uploads/questions/${imageId}.png` : ""
+                          }
+                          alt="Question Visual"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/default-image.png";
+                          }}
                         />
                       ) : (
                         console.warn(`Missing image for ID: ${imageId}`)

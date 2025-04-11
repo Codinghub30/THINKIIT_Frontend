@@ -71,6 +71,8 @@ const SummaryPage = () => {
   );
   const [summaryData1, setSummaryData1] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
+  const [totalTime, setTotalTime] = useState(180);
+
   const { id } = useParams();
   const fetchTestDataById = async () => {
     try {
@@ -78,11 +80,26 @@ const SummaryPage = () => {
       const test = response?.data;
       const testName = test?.testPattern;
 
-      const matchedExam = patternData.find((exam) => exam.exam === testName);
+      // Get actual sections with _id
+      const realSections = test?.sections || [];
 
-      if (matchedExam) {
-        setSelectedExam(matchedExam);
-      }
+      const matchedPattern = patternData.find((p) => p.exam === testName);
+      if (!matchedPattern) return;
+
+      // Combine pattern + DB sectionId
+      const enrichedSections = matchedPattern.sections.map(
+        (patternSection, index) => {
+          return {
+            ...patternSection,
+            sectionId: realSections[index]?._id || null, // 👈 Add actual DB _id here
+          };
+        }
+      );
+
+      setSelectedExam({
+        ...matchedPattern,
+        sections: enrichedSections,
+      });
     } catch (error) {
       console.error("Error fetching test data:", error);
     }
@@ -97,6 +114,33 @@ const SummaryPage = () => {
     const updatedData = [...userSelectionData];
     updatedData[index][field] = e.target.value;
     setUserSelectionData(updatedData);
+  };
+
+  const handleReviewAndGenerate = async () => {
+    try {
+      if (!selectedExam?.sections?.length) return;
+
+      for (let i = 0; i < selectedExam.sections.length; i++) {
+        const section = selectedExam.sections[i];
+        const sectionId = section.sectionId;
+
+        const updatePayload = {
+          marksPerQuestion: userSelectionData[i]?.CM || 0,
+          negativeMarksPerWrongAnswer: userSelectionData[i]?.NM || 0,
+          minQuestionsAnswerable: userSelectionData[i]?.minAnswerable || 0,
+          numberOfQuestions: userSelectionData[i]?.selectedMax || 0,
+          testDuration: totalTime,
+        };
+
+        await testServices.updateSectionMeta(id, sectionId, updatePayload);
+      }
+
+      alert("Test metadata saved successfully!");
+      navigate(`/questionPage/${id}`);
+    } catch (error) {
+      console.error("Review/Generate Error:", error);
+      alert("Failed to save data");
+    }
   };
 
   return (
@@ -236,7 +280,7 @@ const SummaryPage = () => {
               </Grid>
               <Grid item xs={1}>
                 <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                  Queue Type
+                  Q Type
                 </Typography>
               </Grid>
               <Grid item xs={2}>
@@ -298,7 +342,7 @@ const SummaryPage = () => {
                 <Grid item xs={1}>
                   <TextField
                     fullWidth
-                    value={userSelectionData[sectionIndex]?.CM || ""}
+                    value={userSelectionData[sectionIndex]?.CM || "4"}
                     onChange={(e) => handleChange(e, "CM", sectionIndex)}
                     variant="outlined"
                     size="small"
@@ -308,7 +352,7 @@ const SummaryPage = () => {
                 <Grid item xs={1}>
                   <TextField
                     fullWidth
-                    value={userSelectionData[sectionIndex]?.NM || ""}
+                    value={userSelectionData[sectionIndex]?.NM || "-1"}
                     onChange={(e) => handleChange(e, "NM", sectionIndex)}
                     variant="outlined"
                     size="small"
@@ -347,6 +391,29 @@ const SummaryPage = () => {
             ))}
           </Grid>
         </Grid>
+        {/* Total Time Input */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 2,
+            marginTop: 3,
+            marginBottom: 1,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+            Total Test Time (minutes):
+          </Typography>
+          <TextField
+            type="number"
+            size="small"
+            value={totalTime}
+            onChange={(e) => setTotalTime(e.target.value)}
+            variant="outlined"
+            sx={{ width: 120 }}
+          />
+        </Box>
 
         {/* Buttons */}
         <Box
@@ -363,6 +430,7 @@ const SummaryPage = () => {
             variant="contained"
             color="primary"
             sx={{ fontWeight: "bold" }}
+            onClick={handleReviewAndGenerate}
           >
             Review and Generate Test
           </Button>

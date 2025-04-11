@@ -20,7 +20,6 @@ const FormModal = ({ isOpen, onClose }) => {
     selectionType: selectionType,
   });
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -97,21 +96,21 @@ const FormModal = ({ isOpen, onClose }) => {
       // Get the pattern based on selected testPattern
       const matchedPattern = testPatterns.find(
         (p) =>
-          p.exam.trim().toLowerCase() === formData.testPattern.trim().toLowerCase()
+          p.exam.trim().toLowerCase() ===
+          formData.testPattern.trim().toLowerCase()
       );
-  
+
       if (!matchedPattern) {
         toast.error("Pattern not found for selected test!");
         return;
       }
-
 
       const transformedSections = matchedPattern.sections.map((section) => ({
         sectionName: section.sectionName,
         subjects: section.subjects.map((subjectName) => ({
           subjectName: subjectName,
           subjectId: "",
-          chapter: [],   
+          chapter: [],
         })),
         questionType: section.questionType || "SCQ",
         numberOfQuestions: section.questions || 0,
@@ -121,24 +120,37 @@ const FormModal = ({ isOpen, onClose }) => {
         sectionStatus: "incomplete",
         questionBankQuestionId: [],
       }));
-      
-  
+
       const payload = {
         testName: formData.testName,
         class: formData.className,
         testPattern: formData.testPattern,
         selectionType: "SELECTION",
-        sections: transformedSections,
       };
-  
+      console.log("the paylaod", payload);
+
       const response = await testServices.createAssignment(payload);
-  
-      localStorage.setItem("sectionCount", transformedSections.length);
-      navigate(`/test-selection/${response.data._id}`);
+      console.log(response);
+      console.log(transformedSections);
+      const testId = response.data._id;
+
+      const sectionMap = {};
+      transformedSections.forEach((section, index) => {
+        const sectionKey = `section-${index}`;
+        sectionMap[sectionKey] = { ...section, sectionKey };
+      });
+
+      localStorage.setItem(
+        `test-${testId}-sections`,
+        JSON.stringify(sectionMap)
+      );
+      localStorage.setItem("sectionCount", Object.keys(sectionMap).length);
+
+      navigate(`/test-selection/${testId}`);
     } catch (error) {
       toast.error("An error occurred while submitting the assignment.");
     }
-  
+
     onClose();
   };
 

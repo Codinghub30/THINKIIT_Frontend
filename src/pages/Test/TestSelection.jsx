@@ -43,55 +43,6 @@ const TestSelection = () => {
     sessionStorage.setItem("sectionMarkingData", JSON.stringify(data));
   };
 
-  // const fetchTestDataById = async (id) => {
-  //   try {
-  //     const data = await testServices.getTestById(id);
-  //     if (data?.data?.sections) {
-  //       const updatedSections = await Promise.all(
-  //         data.data.sections.map(async (section) => {
-  //           const subID = section.subjectId;
-  //           if (!subID) {
-  //             console.error(
-  //               `No subject ID found for section: ${section.subject}`
-  //             );
-  //             return section;
-  //           }
-
-  //           const chapterData = await apiServices.fetchChapter(subID);
-
-  //           const allTopics = await Promise.all(
-  //             chapterData.map(async (chapter) => {
-  //               const topics = await fetchTopics(chapter._id);
-  //               return { chapterId: chapter._id, topics };
-  //             })
-  //           );
-
-  //           const formattedChapters = chapterData.map((chapter) => {
-  //             const matchedTopics =
-  //               allTopics.find((t) => t.chapterId === chapter._id)?.topics ||
-  //               [];
-  //             return {
-  //               _id: chapter._id,
-  //               chapterName: chapter.chapterName,
-  //               topics: matchedTopics,
-  //             };
-  //           });
-
-  //           return { ...section, chapters: formattedChapters };
-  //         })
-  //       );
-
-  //       setSavedSections(updatedSections);
-  //       setActiveSection(updatedSections[0]?._id || "");
-  //     } else {
-  //       setSavedSections([]);
-  //       toast.error("No sections found.");
-  //     }
-  //   } catch (error) {
-  //     toast.error("Failed to fetch test details.");
-  //     console.error("Error:", error);
-  //   }
-  // };
   const updateSectionField = (fieldName, value) => {
     setSectionData((prev) => {
       const updated = {
@@ -181,70 +132,115 @@ const TestSelection = () => {
     fetchSubject();
   }, [id]);
 
+  // useEffect(() => {
+  //   console.log("jsljsldjasdj");
+
+  //   const fetchTestDataById = async () => {
+  //     try {
+  //       const response = await testServices.getTestById(id);
+  //       const test = response?.data;
+  //       if (!test) return;
+
+  //       const initialData = {};
+  //       const fetchedSections = test.sections.map((section, idx) => {
+  //         const sectionId = section._id;
+
+  //         initialData[sectionId] = {
+  //           subjectSelections:
+  //             section.subjects?.map((subject) => ({
+  //               subjectName: subject.subjectName || "",
+  //               subjectId: subject.subjectId || "",
+  //               chapter: (subject.chapter || [])?.map((chap) => ({
+  //                 chapterName: chap.chapterName || "",
+  //                 topic: (chap.topic || [])?.map((topic) => ({
+  //                   topicName: topic.topicName || "",
+  //                   numberOfQuestions: topic.numberOfQuestions || 0,
+  //                 })),
+  //               })),
+  //               // topic: subject.topic || [],
+  //             })) || [],
+  //           classSelections: [test.class || ""],
+  //           questionType: section.questionType || "SCQ",
+  //           positiveMarking: section.marksPerQuestion || "",
+  //           negativeMarking: section.negativeMarksPerWrongAnswer || "",
+  //           searchText: "",
+  //           selectionType: section.questionSelection || "Manual",
+  //           questionBankQuestionId: section.questionBankQuestionId || [],
+  //         };
+
+  //         return {
+  //           id: sectionId,
+  //           sectionName: section.sectionName || `Section ${idx + 1}`,
+  //         };
+  //       });
+
+  //       setAllSections(fetchedSections);
+
+  //       const sessionData = JSON.parse(
+  //         sessionStorage.getItem("sectionMarkingData") || "{}"
+  //       );
+  //       const mergedData = { ...initialData, ...sessionData };
+
+  //       setSectionData(mergedData);
+  //       sessionStorage.setItem(
+  //         "sectionMarkingData",
+  //         JSON.stringify(mergedData)
+  //       );
+
+  //       if (fetchedSections.length > 0) {
+  //         setActiveSectionId(fetchedSections[0].id);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to fetch test:", error);
+  //     }
+  //   };
+
+  //   if (id) fetchTestDataById();
+  // }, [id]);
+
   useEffect(() => {
-    console.log("jsljsldjasdj");
+    const stored = localStorage.getItem(`test-${id}-sections`);
+    if (!stored) return;
 
-    const fetchTestDataById = async () => {
-      try {
-        const response = await testServices.getTestById(id);
-        const test = response?.data;
-        if (!test) return;
+    const parsed = JSON.parse(stored); // format: { section-0: {}, section-1: {}, ... }
 
-        const initialData = {};
-        const fetchedSections = test.sections.map((section, idx) => {
-          const sectionId = section._id;
+    // Convert to array for tabs and UI
+    const structuredSections = Object.entries(parsed).map(([key, data]) => ({
+      id: key,
+      sectionName: data.sectionName || key,
+    }));
 
-          initialData[sectionId] = {
-            subjectSelections:
-              section.subjects?.map((subject) => ({
-                subjectName: subject.subjectName || "",
-                subjectId: subject.subjectId || "",
-                chapter: (subject.chapter || [])?.map((chap) => ({
-                  chapterName: chap.chapterName || "",
-                  topic: (chap.topic || [])?.map((topic) => ({
-                    topicName: topic.topicName || "",
-                    numberOfQuestions: topic.numberOfQuestions || 0,
-                  })),
-                })),
-                // topic: subject.topic || [],
-              })) || [],
-            classSelections: [test.class || ""],
-            questionType: section.questionType || "SCQ",
-            positiveMarking: section.marksPerQuestion || "",
-            negativeMarking: section.negativeMarksPerWrongAnswer || "",
-            searchText: "",
-            selectionType: section.questionSelection || "Manual",
-            questionBankQuestionId: section.questionBankQuestionId || [],
-          };
+    setAllSections(structuredSections);
 
-          return {
-            id: sectionId,
-            sectionName: section.sectionName || `Section ${idx + 1}`,
-          };
-        });
+    const sectionMarkingData = {};
+    for (const [sectionId, sectionDetails] of Object.entries(parsed)) {
+      sectionMarkingData[sectionId] = {
+        subjectSelections: sectionDetails.subjects || [],
+        classSelections: [localStorage.getItem("selectedClass") || ""],
+        questionType: sectionDetails.questionType || "SCQ",
+        positiveMarking: sectionDetails.marksPerQuestion || "",
+        negativeMarking: sectionDetails.negativeMarksPerWrongAnswer || "",
+        searchText: "",
+        selectionType: sectionDetails.questionSelection || "Manual",
+      };
+    }
 
-        setAllSections(fetchedSections);
+    setSectionData(sectionMarkingData);
+    sessionStorage.setItem(
+      "sectionMarkingData",
+      JSON.stringify(sectionMarkingData)
+    );
 
-        const sessionData = JSON.parse(
-          sessionStorage.getItem("sectionMarkingData") || "{}"
-        );
-        const mergedData = { ...initialData, ...sessionData };
+    if (structuredSections.length > 0) {
+      setActiveSectionId(structuredSections[0].id);
+    }
+  }, [id]);
 
-        setSectionData(mergedData);
-        sessionStorage.setItem(
-          "sectionMarkingData",
-          JSON.stringify(mergedData)
-        );
-
-        if (fetchedSections.length > 0) {
-          setActiveSectionId(fetchedSections[0].id);
-        }
-      } catch (error) {
-        console.error("Failed to fetch test:", error);
-      }
-    };
-
-    if (id) fetchTestDataById();
+  useEffect(() => {
+    const storedSubjects = localStorage.getItem(`test-${id}-subjects`);
+    if (storedSubjects) {
+      setSubjects(JSON.parse(storedSubjects));
+    }
   }, [id]);
 
   // const handleTopicsSelected = (chapterNames, topicNames) => {
@@ -457,6 +453,8 @@ const TestSelection = () => {
       sessionStorage.setItem("sectionMarkingData", JSON.stringify(updated));
     }
 
+    console.log("the selected new subject", value);
+
     // Update the selectedSubject to the chosen value (this ensures it's Math or the correct subject)
     setSelectedSubject(value);
 
@@ -568,40 +566,84 @@ const TestSelection = () => {
         sessionStorage.setItem("AutoPickedQuestions", JSON.stringify(updated));
       }
 
-      const filteredSubjects = (currentSection.subjectSelections || []).map(
-        (subject) => {
-          const isSelected = subject.subjectName === selectedSubject;
-
-          return {
-            subjectName: subject.subjectName,
-            subjectId: subject._id || subject.subjectId || "",
-            chapter: isSelected
-              ? (subject.chapter || []).map((chapter) => ({
-                  chapterName: chapter.chapterName,
-                  topic: (chapter.topic || []).map((topic) => ({
-                    topicName: topic.topicName,
-                    numberOfQuestions: topic.numberOfQuestions || 0,
-                  })),
-                }))
-              : [], // if not selectedSubject, send empty chapters
-          };
-        }
+      const selectedSubObj = currentSection.subjectSelections.find(
+        (subject) =>
+          subject.subjectName === selectedSubject ||
+          subject.subjectName === selectedSubject?.subjectName
       );
 
-      // Prepare final request body
+      if (!selectedSubObj) {
+        alert("Please select a subject before proceeding.");
+        return;
+      }
       const requestData = {
-        sectionId: activeSectionId,
+        sectionName:
+          allSections.find((sec) => sec.id === activeSectionId)?.sectionName ||
+          "New Section",
         class: selectedClass,
+        questionType: currentSection.questionType || "SCQ",
         marksPerQuestion: currentSection.positiveMarking,
         negativeMarksPerWrongAnswer: currentSection.negativeMarking,
-        subjects: filteredSubjects,
+        questionSelection: currentSection.selectionType || "Manual",
+        subjects: [
+          {
+            subjectName: selectedSubObj.subjectName,
+            subjectId: selectedSubObj._id || selectedSubObj.subjectId || "",
+            chapter: (selectedSubObj.chapter || []).map((chapter) => ({
+              chapterName: chapter.chapterName,
+              topic: (chapter.topic || []).map((topic) => ({
+                topicName: topic.topicName,
+                numberOfQuestions: topic.numberOfQuestions || 0,
+              })),
+            })),
+          },
+        ],
       };
+
+      // const filteredSubjects = [
+      //   {
+      //     subjectName: selectedSubObj.subjectName,
+      //     subjectId: selectedSubObj._id || selectedSubObj.subjectId || "",
+      //     chapter: (selectedSubObj.chapter || []).map((chapter) => ({
+      //       chapterName: chapter.chapterName,
+      //       topic: (chapter.topic || []).map((topic) => ({
+      //         topicName: topic.topicName,
+      //         numberOfQuestions: topic.numberOfQuestions || 0,
+      //       })),
+      //     })),
+      //   },
+      // ];
+
+      // const requestData = {
+      //   // sectionId: activeSectionId,
+      //   class: selectedClass,
+      //   marksPerQuestion: currentSection.positiveMarking,
+      //   negativeMarksPerWrongAnswer: currentSection.negativeMarking,
+      //   subjects: filteredSubjects,
+      // };
 
       console.log("Final requestData sent to API:", requestData);
 
-      const response = await testServices.AddSectionDetails(id, requestData);
-      console.log(response);
+      const sectionInDb = testDetails.sections.find(
+        (sec) =>
+          sec.sectionName ===
+          allSections.find((s) => s.id === activeSectionId)?.sectionName
+      );
 
+      let response;
+      if (sectionInDb?._id) {
+        // Update if section exists in DB
+        response = await testServices.updateSectionDetails(
+          sectionInDb._id,
+          requestData
+        );
+      } else {
+        // Add new section
+        response = await testServices.AddSectionDetails(id, requestData);
+      }
+
+      console.log(response);
+      const realSectionId = response.data.sectionId;
       alert("Section details saved successfully!");
       navigate(`/questionPage/${id}`);
     } catch (error) {
@@ -612,7 +654,7 @@ const TestSelection = () => {
 
   useEffect(() => {
     console.log("Selected Subject: ", selectedSubject);
-  }, [selectedSubject]); // This will log only when the selectedSubject changes
+  }, [selectedSubject]);
 
   return (
     <>
@@ -729,7 +771,6 @@ const TestSelection = () => {
               </IconButton>
             }
           >
-            {console.log("the checling  bro", subject.subjectName)}
             {subject.subjectName}
           </Button>
         ))}
@@ -817,8 +858,18 @@ const TestSelection = () => {
               }
 
               const subjectObj = subjects.find(
-                (sub) => sub.subjectName === selectedSubject
+                (s) => s.subjectName === selectedSubject
               );
+              if (subjectObj) {
+                const chapterData = await apiServices.fetchChapter(
+                  subjectObj._id
+                );
+                setChapters((prev) => ({
+                  ...prev,
+                  [subjectObj.subjectName]: chapterData,
+                }));
+              }
+
               if (!subjectObj) {
                 console.warn("Subject not found in subject list");
                 return;
