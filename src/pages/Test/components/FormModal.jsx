@@ -127,7 +127,7 @@ const FormModal = ({ isOpen, onClose }) => {
         testPattern: formData.testPattern,
         selectionType: "SELECTION",
       };
-      console.log("the paylaod", payload);
+      console.log("the paylaod", transformedSections);
 
       const response = await testServices.createAssignment(payload);
       console.log(response);

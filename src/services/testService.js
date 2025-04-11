@@ -381,9 +381,10 @@ const testServices = {
       payload
     );
   },
-  updateSectionDetails: (sectionId, data) => {
-    return axios.put(`/api/section/${sectionId}`, data);
-  },
+
+  // updateSectionDetails: (sectionId, data) => {
+  //   return axios.put(`/api/section/${sectionId}`, data);
+  // },
 };
 
 export default testServices;

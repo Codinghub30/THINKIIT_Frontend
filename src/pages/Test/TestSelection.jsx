@@ -33,6 +33,7 @@ const TestSelection = () => {
   const [chapters, setChapters] = useState({});
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [testDetails, setTestDetails] = useState(null);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -132,6 +133,21 @@ const TestSelection = () => {
     fetchSubject();
   }, [id]);
 
+  useEffect(() => {
+    const fetchTestDetails = async () => {
+      try {
+        const response = await testServices.getTestById(id);
+        console.log("the rewposje", response);
+
+        setTestDetails(response.data);
+      } catch (error) {
+        console.error("Failed to fetch test details", error);
+      }
+    };
+
+    fetchTestDetails();
+  }, [id]);
+
   // useEffect(() => {
   //   console.log("jsljsldjasdj");
 
@@ -202,13 +218,17 @@ const TestSelection = () => {
     const stored = localStorage.getItem(`test-${id}-sections`);
     if (!stored) return;
 
-    const parsed = JSON.parse(stored); // format: { section-0: {}, section-1: {}, ... }
+    const raw = localStorage.getItem(`test-${id}-sections`);
+    const parsed = raw ? JSON.parse(raw) : {};
 
-    // Convert to array for tabs and UI
-    const structuredSections = Object.entries(parsed).map(([key, data]) => ({
+    console.log("Parsed LocalStorage Section Data:", parsed);
+
+    const structuredSections = Object.entries(parsed).map(([key, section]) => ({
       id: key,
-      sectionName: data.sectionName || key,
+      sectionName: section?.sectionName || key, // Safely fallback
     }));
+
+    console.log("the log of the parsed", parsed);
 
     setAllSections(structuredSections);
 
@@ -222,6 +242,7 @@ const TestSelection = () => {
         negativeMarking: sectionDetails.negativeMarksPerWrongAnswer || "",
         searchText: "",
         selectionType: sectionDetails.questionSelection || "Manual",
+        sectionName: sectionDetails.sectionName || key, // <-- Store name in marking data too (optional)
       };
     }
 
@@ -312,63 +333,6 @@ const TestSelection = () => {
     }
   };
 
-  // const handleTopicsSelected = (chapterNames = [], topicNames = []) => {
-  //   const updatedSection = { ...sectionData[activeSectionId] };
-  //   const updatedSubjects = Array.isArray(updatedSection.subjectSelections)
-  //     ? [...updatedSection.subjectSelections]
-  //     : [];
-
-  //   // Find the index of the subject in subjectSelections
-  //   const subjectIndex = updatedSubjects?.findIndex(
-  //     (s) => (s.subjectName || "") === (selectedSubject || "")
-  //   );
-
-  //   if (subjectIndex !== -1) {
-  //     // For each selected chapter, map it to the correct topics
-  //     const chapterWithTopics = chapterNames.map((chapter) => {
-  //       // Find the related topics from topicNames based on chapter name
-  //       const relatedTopics = topicNames.filter(
-  //         (topic) =>
-  //           topic.chapterName?.toLowerCase() ===
-  //           chapter.chapterName?.toLowerCase()
-  //       );
-
-  //       return {
-  //         chapterName: chapter.chapterName || chapter,
-  //         topic: relatedTopics.map((topic) => ({
-  //           topicName: topic,
-  //           numberOfQuestions:
-  //             selectionType === "Auto"
-  //               ? topic.numberOfQuestions || 0
-  //               : topic.numberOfQuestions ?? 0, // allow 0 in manual
-  //         })),
-  //       };
-  //     });
-
-  //     // Update the subject with the populated chapters and topics
-  //     updatedSubjects[subjectIndex] = {
-  //       ...updatedSubjects[subjectIndex],
-  //       chapter: chapterWithTopics,
-  //     };
-
-  //     const updatedData = {
-  //       ...sectionData,
-  //       [activeSectionId]: {
-  //         ...updatedSection,
-  //         subjectSelections: updatedSubjects,
-  //       },
-  //     };
-
-  //     // Save updated data to sessionStorage
-  //     sessionStorage.setItem("sectionMarkingData", JSON.stringify(updatedData));
-
-  //     // Update the state with the new section data
-  //     setSectionData(updatedData);
-  //   } else {
-  //     console.warn("Selected subject not found:", selectedSubject);
-  //   }
-  // };
-
   // const handleClassChange = (index, value) => {
   const handleClassChange = (value) => {
     // const updated = [...currentSection.classSelections];
@@ -407,30 +371,6 @@ const TestSelection = () => {
       },
     }));
   };
-
-  // const handleAddSubject = async (value) => {
-  //   const updated = { ...sectionData };
-
-  //   if (!updated[activeSectionId].subjectSelections.includes(value)) {
-  //     updated[activeSectionId].subjectSelections.push(value);
-  //     setSectionData(updated);
-  //     sessionStorage.setItem("sectionMarkingData", JSON.stringify(updated));
-  //   }
-
-  //   // Fetch chapters
-  //   const subjectObj = subjects.find((sub) => sub.subjectName === value);
-  //   if (!subjectObj) return;
-
-  //   const response = await apiServices.fetchChapter(subjectObj._id);
-
-  //   setChapters((prev) => ({
-  //     ...prev,
-  //     [value]: response, // response should be an array of chapters
-  //   }));
-
-  //   setSelectedSubject(value);
-  //   setAddNew(false);
-  // };
 
   const handleAddSubject = (value) => {
     // Find the subject object from the fetched subjects list
@@ -519,6 +459,12 @@ const TestSelection = () => {
         sessionStorage.getItem("sectionMarkingData") || "{}"
       );
       const selectedClass = sessionStorage.getItem("selectedClass");
+
+      if (!activeSectionId || !sectionData[activeSectionId]) {
+        alert("No active section data found. Please try again.");
+        return;
+      }
+
       const currentSection = sectionData[activeSectionId];
 
       // Auto pick logic
@@ -576,10 +522,10 @@ const TestSelection = () => {
         alert("Please select a subject before proceeding.");
         return;
       }
+      const sectionName = sectionData[activeSectionId]?.sectionName;
+
       const requestData = {
-        sectionName:
-          allSections.find((sec) => sec.id === activeSectionId)?.sectionName ||
-          "New Section",
+        sectionName: sectionName || "New Section",
         class: selectedClass,
         questionType: currentSection.questionType || "SCQ",
         marksPerQuestion: currentSection.positiveMarking,
@@ -618,11 +564,11 @@ const TestSelection = () => {
       //   // sectionId: activeSectionId,
       //   class: selectedClass,
       //   marksPerQuestion: currentSection.positiveMarking,
-      //   negativeMarksPerWrongAnswer: currentSection.negativeMarking,
+      //   negativeMarksPerWrongAnswer: currentSection.negativeMarking
       //   subjects: filteredSubjects,
       // };
 
-      console.log("Final requestData sent to API:", requestData);
+      console.log("Final requestData sent to API:", testDetails);
 
       const sectionInDb = testDetails.sections.find(
         (sec) =>
@@ -630,20 +576,32 @@ const TestSelection = () => {
           allSections.find((s) => s.id === activeSectionId)?.sectionName
       );
 
+      console.log("the section", sectionInDb);
+      console.log("the section222", testDetails.sections);
+      // const sectionName =
+      //   allSections.find((sec) => sec.id === activeSectionId)?.sectionName ||
+      //   `Section ${activeSectionId.split("-").pop()}`;
+      console.log("the sectionname1111", activeSectionId);
+
+      // const existingSection = testDetails.sections.find((s) => s._id);
+      // const existingSection = testDetails.sections.find((s) => s._id);
+      // const sectionName = sectionData[activeSectionId]?.sectionName;
+      console.log("the section name", sectionName);
+
+      const existingSection = testDetails.sections.find(
+        (s) => s.sectionName === sectionName
+      );
+
+      console.log("the sectionname22222", testDetails.sections);
+
+      console.log("the existing", existingSection);
+
       let response;
-      if (sectionInDb?._id) {
-        // Update if section exists in DB
-        response = await testServices.updateSectionDetails(
-          sectionInDb._id,
-          requestData
-        );
-      } else {
-        // Add new section
-        response = await testServices.AddSectionDetails(id, requestData);
-      }
+
+      response = await testServices.AddSectionDetails(id, requestData);
 
       console.log(response);
-      const realSectionId = response.data.sectionId;
+      // const realSectionId = response.data.sectionId;
       alert("Section details saved successfully!");
       navigate(`/questionPage/${id}`);
     } catch (error) {

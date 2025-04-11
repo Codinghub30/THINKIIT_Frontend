@@ -157,70 +157,37 @@ const QuestionPages = () => {
       try {
         if (!selectedSection) return;
 
-        const sectionId = selectedSection._id;
-        const sessionSection = sectionMarkingData[sectionId] || {};
-        const manualPick = sessionStorage.getItem("ManualPick");
-        const parsedManual = manualPick ? JSON.parse(manualPick) : null;
+        const subjectData = selectedSection.subjects?.[0];
 
-        const allResponses = [];
+        if (!subjectData) return;
 
-        // Loop over subjects in the selected section
-        for (const subject of sessionSection.subjectSelections || []) {
-          const subjectName =
-            typeof subject === "string" ? subject : subject.subjectName || "";
+        const payload = {
+          Subject: subjectData.subjectName?.trim() || "",
+          chapter:
+            subjectData.chapter?.map((c) =>
+              typeof c === "string" ? c.trim() : c.chapterName?.trim()
+            ) || [],
+          topic:
+            subjectData.chapter
+              ?.flatMap((c) => c.topic || [])
+              ?.map((t) =>
+                typeof t === "string" ? t.trim() : t.topicName?.trim()
+              ) || [],
+          questionType: selectedSection.questionType?.trim() || "SCQ",
+        };
 
-          // Loop over chapters in each subject
-          for (const chapter of subject.chapter || []) {
-            const chapterName = chapter.chapterName || "";
+        const response = await testServices.GetFilteredQuestions(payload);
 
-            // Get topic names for the chapter and add numberOfQuestions to each topic
-            const topicNamesWithQuestionCount = (chapter.topic || []).map(
-              (t) => ({
-                topicName: t.topicName?.trim() || t.trim?.(),
-                numberOfQuestions: t.numberOfQuestions || 0,
-              })
-            );
-
-            if (topicNamesWithQuestionCount.length === 0) continue; // skip chapters with no topics
-
-            // Prepare the payload for API call, including topic names and numberOfQuestions
-            const payload = {
-              Subject: subjectName.trim(),
-              chapter: chapterName.trim(),
-              topic: topicNamesWithQuestionCount.map((t) => t.topicName), // Pass only topic names
-              numberOfQuestions: topicNamesWithQuestionCount.reduce(
-                (acc, t) => acc + t.numberOfQuestions,
-                0
-              ), // Sum of questions for all topics
-              questionType: (sessionSection.questionType || "SCQ").trim(),
-            };
-
-            console.log("Payload payload:", payload);
-
-            // Fetch the filtered questions
-            const response = await testServices.GetFilteredQuestions(payload);
-            if (Array.isArray(response)) allResponses.push(...response);
-          }
-        }
-
-        setFilteredQuestions(allResponses);
-        setAllQuestions(allResponses);
-        setSectionWiseQuestions((prev) => ({
-          ...prev,
-          [sectionId]: allResponses,
-        }));
-
-        if (!parsedManual) {
-          const difficultyOptions = [
-            ...new Set(allResponses.map((q) => q.Difficulty)),
-          ];
-          setFilters((prev) => ({
+        if (Array.isArray(response)) {
+          setFilteredQuestions(response);
+          setAllQuestions(response);
+          setSectionWiseQuestions((prev) => ({
             ...prev,
-            Difficulty: difficultyOptions.length ? difficultyOptions : [],
+            [selectedSection._id]: response,
           }));
         }
       } catch (err) {
-        console.error("Fetch Error in Auto Pick:", err.message);
+        console.error("Fetch Error:", err.message);
       }
     };
 
@@ -274,16 +241,20 @@ const QuestionPages = () => {
             console.log("the test payload", payload);
 
             const result = await testServices.GetFilteredQuestions(payload);
+            console.log("all", result);
             return { sectionId: section._id, questions: result };
           })
         );
 
         const sectionWise = {};
+
         allQuestions.forEach(({ sectionId, questions }) => {
           sectionWise[sectionId] = questions;
         });
 
         setSectionWiseQuestions(sectionWise);
+        console.log("sectiomwisee", sectionWise);
+
         setFilteredQuestions(sectionWise[testData.sections[0]._id]);
         setSelectedSection(testData.sections[0]);
 
@@ -799,7 +770,9 @@ const QuestionPages = () => {
                 const imageMatch = question.English?.match(
                   /\\includegraphics\[.*?\]{(.*?)}/
                 );
-
+                {
+                  console.log("the quersiotnss", question);
+                }
                 const imageId = imageMatch ? imageMatch[1] : null;
 
                 const cleanQuestion = question.English?.replace(
