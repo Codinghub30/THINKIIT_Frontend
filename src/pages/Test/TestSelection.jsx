@@ -464,68 +464,26 @@ const TestSelection = () => {
         alert("No active section data found. Please try again.");
         return;
       }
+      console.log("the fkjdhf");
 
       const currentSection = sectionData[activeSectionId];
-
-      // Auto pick logic
-      if (selectionType === "Auto") {
-        const topics = currentSection.subjectSelections.flatMap((subject) =>
-          (subject.chapter || []).flatMap((chapter) =>
-            (chapter.topic || []).map((topic) => ({
-              topicName: topic.topicName,
-              numberOfQuestions: topic.numberOfQuestions || 0,
-              chapterName: chapter.chapterName,
-            }))
-          )
-        );
-
-        const autoPickResponse = await testServices.AutoPickQuestions(id, {
-          sectionId: activeSectionId,
-          topics,
-          totalQuestions: topics.reduce(
-            (sum, t) => sum + (t.numberOfQuestions || 0),
-            0
-          ),
-        });
-
-        if (!autoPickResponse?.success) {
-          alert("Auto pick failed.");
-          return;
-        }
-
-        const autoPicked = autoPickResponse.data;
-
-        const existing = JSON.parse(
-          sessionStorage.getItem("AutoPickedQuestions") || "{}"
-        );
-        const updated = { ...existing };
-
-        if (!updated[activeSectionId]) updated[activeSectionId] = {};
-
-        Object.entries(autoPicked).forEach(([topicName, questionMap]) => {
-          updated[activeSectionId][topicName] = {
-            ...(updated[activeSectionId][topicName] || {}),
-            ...questionMap,
-          };
-        });
-
-        sessionStorage.setItem("AutoPickedQuestions", JSON.stringify(updated));
-      }
+      // console.log("the currentSection", currentSection?.sectionName);
+      const sectionName = currentSection?.sectionName || "New Section";
 
       const selectedSubObj = currentSection.subjectSelections.find(
         (subject) =>
           subject.subjectName === selectedSubject ||
           subject.subjectName === selectedSubject?.subjectName
       );
+      // console.log("the selectedSubObj", selectedSubObj);
 
       if (!selectedSubObj) {
         alert("Please select a subject before proceeding.");
         return;
       }
-      const sectionName = sectionData[activeSectionId]?.sectionName;
 
       const requestData = {
-        sectionName: sectionName || "New Section",
+        sectionName,
         class: selectedClass,
         questionType: currentSection.questionType || "SCQ",
         marksPerQuestion: currentSection.positiveMarking,
@@ -546,62 +504,63 @@ const TestSelection = () => {
         ],
       };
 
-      // const filteredSubjects = [
-      //   {
-      //     subjectName: selectedSubObj.subjectName,
-      //     subjectId: selectedSubObj._id || selectedSubObj.subjectId || "",
-      //     chapter: (selectedSubObj.chapter || []).map((chapter) => ({
-      //       chapterName: chapter.chapterName,
-      //       topic: (chapter.topic || []).map((topic) => ({
-      //         topicName: topic.topicName,
-      //         numberOfQuestions: topic.numberOfQuestions || 0,
-      //       })),
-      //     })),
-      //   },
-      // ];
+      const response = await testServices.AddSectionDetails(id, requestData);
 
-      // const requestData = {
-      //   // sectionId: activeSectionId,
-      //   class: selectedClass,
-      //   marksPerQuestion: currentSection.positiveMarking,
-      //   negativeMarksPerWrongAnswer: currentSection.negativeMarking
-      //   subjects: filteredSubjects,
-      // };
-
-      console.log("Final requestData sent to API:", testDetails);
-
-      const sectionInDb = testDetails.sections.find(
-        (sec) =>
-          sec.sectionName ===
-          allSections.find((s) => s.id === activeSectionId)?.sectionName
+      const updatedSections = response;
+      console.log("the updatedSections", updatedSections);
+      console.log("the updatedSections1", updatedSections.sections);
+      const realSection = updatedSections.sections.find(
+        (s) =>
+          s.sectionName?.trim()?.toLowerCase() ===
+          sectionName.trim().toLowerCase()
       );
+      const realSectionId = realSection?._id;
 
-      console.log("the section", sectionInDb);
-      console.log("the section222", testDetails.sections);
-      // const sectionName =
-      //   allSections.find((sec) => sec.id === activeSectionId)?.sectionName ||
-      //   `Section ${activeSectionId.split("-").pop()}`;
-      console.log("the sectionname1111", activeSectionId);
+      if (selectionType === "Auto") {
+        const topics = currentSection.subjectSelections.flatMap((subject) =>
+          (subject.chapter || []).flatMap((chapter) =>
+            (chapter.topic || []).map((topic) => ({
+              topicName: topic.topicName,
+              numberOfQuestions: topic.numberOfQuestions || 0,
+              chapterName: chapter.chapterName,
+            }))
+          )
+        );
 
-      // const existingSection = testDetails.sections.find((s) => s._id);
-      // const existingSection = testDetails.sections.find((s) => s._id);
-      // const sectionName = sectionData[activeSectionId]?.sectionName;
-      console.log("the section name", sectionName);
+        const autoPickResponse = await testServices.AutoPickQuestions(id, {
+          sectionId: realSectionId,
+          topics,
+          totalQuestions: topics.reduce(
+            (sum, t) => sum + (t.numberOfQuestions || 0),
+            0
+          ),
+        });
 
-      const existingSection = testDetails.sections.find(
-        (s) => s.sectionName === sectionName
-      );
+        if (!autoPickResponse?.success) {
+          alert("Auto pick failed.");
+          return;
+        }
 
-      console.log("the sectionname22222", testDetails.sections);
+        const autoPicked = autoPickResponse.data;
+        console.log("autoPickedautoPicked", autoPicked);
 
-      console.log("the existing", existingSection);
+        const existing = JSON.parse(
+          sessionStorage.getItem("AutoPickedQuestions") || "{}"
+        );
+        const updated = { ...existing };
 
-      let response;
+        if (!updated[realSectionId]) updated[realSectionId] = {};
 
-      response = await testServices.AddSectionDetails(id, requestData);
+        Object.entries(autoPicked).forEach(([topicName, questionMap]) => {
+          updated[realSectionId][topicName] = {
+            ...(updated[realSectionId][topicName] || {}),
+            ...questionMap,
+          };
+        });
 
-      console.log(response);
-      // const realSectionId = response.data.sectionId;
+        sessionStorage.setItem("AutoPickedQuestions", JSON.stringify(updated));
+      }
+
       alert("Section details saved successfully!");
       navigate(`/questionPage/${id}`);
     } catch (error) {
@@ -807,8 +766,6 @@ const TestSelection = () => {
           variant="contained"
           sx={{ backgroundColor: "#1976d2" }}
           onClick={async () => {
-            console.log("the serched", selectedSubject);
-
             try {
               if (!selectedSubject || !searchText.trim()) {
                 console.warn("Missing selected subject or search text");
