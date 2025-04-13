@@ -25,7 +25,7 @@ const TestHeader = ({
 
   const navigate = useNavigate();
   const { id } = useParams();
-console.log(id);
+  console.log(id);
 
   // const fetchTestDataById = async (id) => {
   //   try {
@@ -95,23 +95,24 @@ console.log(id);
   const confirmAddSection = async () => {
     const name = newSectionName.trim();
     if (!name) return;
-  
+
     try {
       const payload = { sectionName: newSectionName };
       const response = await testServices.createSections(id, payload);
-  
+
       const updatedTest = response?.data;
-      const createdSection = updatedTest.sections[updatedTest.sections.length - 1];
-  
+      const createdSection =
+        updatedTest.sections[updatedTest.sections.length - 1];
+
       const newId = createdSection._id;
       const sectionName = createdSection.sectionName;
-  
+
       const newSection = { id: newId, sectionName: name };
-  
+
       // Update allSections first
       const updatedSections = [...allSections, newSection];
       setAllSections(updatedSections);
-  
+
       // After allSections is updated, now update active and index
       setTimeout(() => {
         setActiveSections((prev) => {
@@ -120,7 +121,7 @@ console.log(id);
           setActiveSectionId(newId);
           return newActive;
         });
-  
+
         // Scroll into view after DOM updates
         setTimeout(() => {
           containerRef.current?.scrollTo({
@@ -129,7 +130,7 @@ console.log(id);
           });
         }, 100);
       }, 0);
-  
+
       // Add initial sectionData
       setSectionData((prev) => ({
         ...prev,
@@ -143,15 +144,14 @@ console.log(id);
           selectionType: "Manual",
         },
       }));
-  
+
       setNewSectionName("");
       setAddingNew(false);
     } catch (err) {
       console.error("Failed to add section:", err);
     }
   };
-  
-  
+
   const handleToggleSection = (id) => {
     let updated;
 
@@ -179,14 +179,57 @@ console.log(id);
       });
     }, 100);
   };
+  // useEffect(() => {
+  //   if (allSections.length > 0) {
+  //     const ids = allSections.map((s) => s.id);
+  //     setActiveSections(ids);
+  //     setActiveSectionId(ids[0]);
+  //     setActiveIndex(0);
+  //   }
+  // }, [allSections]);
   useEffect(() => {
-    if (allSections.length > 0) {
-      const ids = allSections.map((s) => s.id);
-      setActiveSections(ids);
-      setActiveSectionId(ids[0]);
-      setActiveIndex(0);
-    }
-  }, [allSections]);
+    const fetchTestSections = async () => {
+      try {
+        const response = await testServices.getTestById(id);
+        const test = response?.data;
+        const dbSections = test?.sections || [];
+
+        if (dbSections.length > 0) {
+          const sectionsFromDB = dbSections.map((section, idx) => ({
+            id: section._id,
+            sectionName:
+              section.sectionName || `Section ${String.fromCharCode(65 + idx)}`,
+          }));
+
+          setAllSections(sectionsFromDB);
+          setActiveSections(sectionsFromDB.map((s) => s.id));
+          setActiveSectionId(sectionsFromDB[0]?.id);
+          setActiveIndex(0);
+        } else {
+          // fallback to localStorage
+          const stored = localStorage.getItem(`test-${id}-sections`);
+          if (!stored) return;
+
+          const parsed = JSON.parse(stored);
+          const sectionsFromStorage = Object.entries(parsed).map(
+            ([key, section]) => ({
+              id: key,
+              sectionName: section?.sectionName || `Section ${key}`,
+            })
+          );
+
+          setAllSections(sectionsFromStorage);
+          setActiveSections(sectionsFromStorage.map((s) => s.id));
+          setActiveSectionId(sectionsFromStorage[0]?.id);
+          setActiveIndex(0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch test sections:", error);
+      }
+    };
+
+    fetchTestSections();
+  }, [id]);
 
   const handleSaveDraft = () => {
     const activeData = allSections.filter((sec) =>
@@ -196,7 +239,7 @@ console.log(id);
   };
 
   const handleSummary = () => {
- navigate(`/TSummery/${id}`)
+    navigate(`/TSummery/${id}`);
   };
 
   const activeSectionsData = allSections.filter((s) =>

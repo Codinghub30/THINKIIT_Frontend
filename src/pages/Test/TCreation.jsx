@@ -109,7 +109,6 @@ const TCreation = () => {
     }, {})
   );
 
-  console.log(testStatus, "testStatus");
 
   // Handle checkbox status change
   const handleStatusToggle = (testId) => {

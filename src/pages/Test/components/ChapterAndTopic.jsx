@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import apiServices from "../../../services/apiServices";
 
-const ChapterAndTopic = ({ chapters, onTopicsSelected }) => {
+const ChapterAndTopic = ({ chapters, subjectName, onTopicsSelected }) => {
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [topicsByChapter, setTopicsByChapter] = useState({});
 
@@ -16,21 +16,37 @@ const ChapterAndTopic = ({ chapters, onTopicsSelected }) => {
 
   // Save changes
   useEffect(() => {
-    sessionStorage.setItem("selectedChapterTopics", JSON.stringify(selectedTopics));
+    sessionStorage.setItem(
+      "selectedChapterTopics",
+      JSON.stringify(selectedTopics)
+    );
   }, [selectedTopics]);
 
   // Fetch topics for all chapters
   useEffect(() => {
     const fetchAllTopics = async () => {
       const topicData = {};
+
       for (let chapter of chapters) {
-        try {
-          const topics = await apiServices.fetchTopic(chapter._id);
-          topicData[chapter._id] = topics;
-        } catch (err) {
-          console.error("Error fetching topics for", chapter.chapterName, err);
+        // ✅ Use existing topics from chapter if available
+        if (chapter.topic && chapter.topic.length > 0) {
+          topicData[chapter._id] = chapter.topic;
+        } else if (chapter.topics && chapter.topics.length > 0) {
+          topicData[chapter._id] = chapter.topics;
+        } else {
+          try {
+            const topics = await apiServices.fetchTopic(chapter._id);
+            topicData[chapter._id] = topics;
+          } catch (err) {
+            console.error(
+              "Error fetching topics for",
+              chapter.chapterName,
+              err
+            );
+          }
         }
       }
+
       setTopicsByChapter(topicData);
     };
 
@@ -48,20 +64,27 @@ const ChapterAndTopic = ({ chapters, onTopicsSelected }) => {
 
   // Callback on topic select
   useEffect(() => {
-    const selectedChapterNames = [...new Set(
-      selectedTopics
-        .map((id) => chapters.find(c => c._id === id.split("-")[0])?.chapterName)
-        .filter(Boolean)
-    )];
+    const selectedChapterList = [
+      ...new Set(
+        selectedTopics
+          .map((id) => chapters.find((c) => c._id === id.split("-")[0]))
+          .filter(Boolean)
+      ),
+    ];
 
-    const selectedTopicNames = selectedTopics
+    const selectedTopicList = selectedTopics
       .map((id) => {
         const [chapterId, topicId] = id.split("-");
-        return topicsByChapter[chapterId]?.find(t => t._id === topicId)?.topicName;
+        const chapter = chapters.find((c) => c._id === chapterId);
+        const topic = topicsByChapter[chapterId]?.find(
+          (t) => t._id === topicId
+        );
+        return topic ? { ...topic, chapterName: chapter?.chapterName } : null;
       })
       .filter(Boolean);
 
-    onTopicsSelected?.(selectedChapterNames, selectedTopicNames);
+    // ✅ Proper format: subjectName, chapterList, topicList
+    onTopicsSelected?.(subjectName, selectedChapterList, selectedTopicList);
   }, [selectedTopics, topicsByChapter]);
 
   const isSelected = (chapterId, topicId) =>
@@ -69,7 +92,7 @@ const ChapterAndTopic = ({ chapters, onTopicsSelected }) => {
 
   return (
     <Box sx={{ padding: 3 }}>
-      {chapters.map((chapter) => (
+      {chapters.map((chapter, index) => (
         <div
           key={chapter._id}
           style={{
@@ -77,18 +100,20 @@ const ChapterAndTopic = ({ chapters, onTopicsSelected }) => {
             borderRadius: "8px",
             padding: "16px",
             marginBottom: "20px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
             {chapter.chapterName}
           </Typography>
 
-          <Box sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 1
-          }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
             {(topicsByChapter[chapter._id] || []).map((topic) => (
               <div
                 key={topic._id}
@@ -101,11 +126,9 @@ const ChapterAndTopic = ({ chapters, onTopicsSelected }) => {
                   fontWeight: 500,
                   backgroundColor: isSelected(chapter._id, topic._id)
                     ? "#1976d2" // Active purple
-                    : "#f3f4f6",  // Default gray
-                  color: isSelected(chapter._id, topic._id)
-                    ? "white"
-                    : "#333",
-                  border: "1px solid #ccc"
+                    : "#f3f4f6", // Default gray
+                  color: isSelected(chapter._id, topic._id) ? "white" : "#333",
+                  border: "1px solid #ccc",
                 }}
               >
                 {topic.topicName}

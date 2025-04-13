@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Box, Button, Typography, Grid, Paper, TextField } from "@mui/material";
 import patternData from "./PreSection/Pattern.json";
 import testServices from "../../services/testService";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const summaryData = {
   patternData: [
@@ -74,32 +74,56 @@ const SummaryPage = () => {
   const [totalTime, setTotalTime] = useState(180);
 
   const { id } = useParams();
+  const navigate = useNavigate();
   const fetchTestDataById = async () => {
     try {
       const response = await testServices.getTestById(id);
       const test = response?.data;
       const testName = test?.testPattern;
-
-      // Get actual sections with _id
       const realSections = test?.sections || [];
 
       const matchedPattern = patternData.find((p) => p.exam === testName);
       if (!matchedPattern) return;
 
-      // Combine pattern + DB sectionId
       const enrichedSections = matchedPattern.sections.map(
         (patternSection, index) => {
+          const dbSection = realSections[index] || {};
           return {
             ...patternSection,
-            sectionId: realSections[index]?._id || null, // 👈 Add actual DB _id here
+            sectionId: dbSection._id || null,
+            questionType: dbSection.questionType || patternSection.questionType,
+            correctAnswerMarks: dbSection.marksPerQuestion || patternSection.CM,
+            negativeMarks:
+              dbSection.negativeMarksPerWrongAnswer || patternSection.NM,
+            maxQuestion:
+              dbSection.numberOfQuestions || patternSection.maxQuestions,
+            minQuestion:
+              dbSection.minQuestionsAnswerable || patternSection.minQuestions,
+            marks: dbSection.marks || patternSection.marks,
+            time: dbSection.testDuration || patternSection.time,
+            subjects:
+              dbSection.subjects?.map((s) => s.subjectName) ||
+              patternSection.subjects,
           };
         }
       );
+
+      const userSelectionFormatted = enrichedSections.map((section) => ({
+        section: section.sectionName,
+        selectedMax: section.maxQuestion,
+        minAnswerable: section.minQuestion,
+        marks: section.marks,
+        time: section.time,
+        CM: section.correctAnswerMarks,
+        NM: section.negativeMarks,
+      }));
 
       setSelectedExam({
         ...matchedPattern,
         sections: enrichedSections,
       });
+
+      setUserSelectionData(userSelectionFormatted);
     } catch (error) {
       console.error("Error fetching test data:", error);
     }
@@ -136,7 +160,7 @@ const SummaryPage = () => {
       }
 
       alert("Test metadata saved successfully!");
-      navigate(`/questionPage/${id}`);
+      navigate(`/questionReview/${id}`);
     } catch (error) {
       console.error("Review/Generate Error:", error);
       alert("Failed to save data");
@@ -426,14 +450,24 @@ const SummaryPage = () => {
           <Button variant="outlined" sx={{ fontWeight: "bold" }}>
             Back
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ fontWeight: "bold" }}
-            onClick={handleReviewAndGenerate}
-          >
-            Review and Generate Test
-          </Button>
+          <Box sx={{ display: "flex", gap: "1rem" }}>
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ fontWeight: "bold" }}
+              onClick={handleReviewAndGenerate}
+            >
+              Preview
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ fontWeight: "bold" }}
+              onClick={handleReviewAndGenerate}
+            >
+              Generate Test
+            </Button>
+          </Box>
         </Box>
       </Paper>
     </Box>

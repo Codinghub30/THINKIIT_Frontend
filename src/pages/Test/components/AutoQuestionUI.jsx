@@ -7,8 +7,8 @@ const AutoQuestionUI = ({ chapters, sectionData, activeSectionId }) => {
   console.log("the check 3", activeSectionId);
 
   const [questions, setQuestions] = useState(
-    chapters.reduce((acc, chapter) => {
-      acc[chapter.chapterName] = chapter.topics.reduce((topicAcc, topic) => {
+    chapters?.reduce((acc, chapter) => {
+      acc[chapter.chapterName] = chapter.topics?.reduce((topicAcc, topic) => {
         topicAcc[topic.topicName] = 0;
         return topicAcc;
       }, {});
@@ -18,7 +18,7 @@ const AutoQuestionUI = ({ chapters, sectionData, activeSectionId }) => {
 
   useEffect(() => {
     const initial = chapters.reduce((acc, chapter) => {
-      acc[chapter.chapterName] = chapter.topics.reduce((topicAcc, topic) => {
+      acc[chapter.chapterName] = chapter.topics?.reduce((topicAcc, topic) => {
         const savedTopic = sectionData[activeSectionId]?.topic?.find(
           (t) => t.topicName === topic.topicName
         );
@@ -49,10 +49,10 @@ const AutoQuestionUI = ({ chapters, sectionData, activeSectionId }) => {
     const updatedSubjects = [...(updatedSection.subjectSelections || [])];
 
     updatedSubjects.forEach((subject) => {
-      subject.chapter = (subject.chapter || []).map((chapter) => {
+      subject.chapter = (subject.chapter || [])?.map((chapter) => {
         if (chapter.chapterName !== chapterName) return chapter;
 
-        const updatedTopics = (chapter.topic || []).map((topic) => {
+        const updatedTopics = (chapter.topic || [])?.map((topic) => {
           if (topic.topicName === topicName) {
             return { ...topic, numberOfQuestions };
           }
@@ -126,7 +126,7 @@ const AutoQuestionUI = ({ chapters, sectionData, activeSectionId }) => {
             gap: 3,
           }}
         >
-          {chapters.map((chapter) => (
+          {chapters?.map((chapter) => (
             <Box
               key={chapter.chapterName}
               sx={{
@@ -149,7 +149,7 @@ const AutoQuestionUI = ({ chapters, sectionData, activeSectionId }) => {
               </Typography>
 
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                {chapter.topics.map((topic) => (
+                {chapter.topics?.map((topic) => (
                   <Box
                     key={topic.topicName}
                     sx={{

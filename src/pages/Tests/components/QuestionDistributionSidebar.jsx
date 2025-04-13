@@ -44,12 +44,87 @@ const QuestionDistributionSidebar = ({
 
   return (
     <div className="w-1/4 h-screen bg-white p-4 rounded-lg shadow-md flex flex-col">
-      <h3 className="font-bold text-gray-800 mb-4 text-lg">
-        Question Distribution
-      </h3>
-
       <div className="flex-1 overflow-y-auto pr-2">
         <div className="mb-4">
+          {section.subjects?.map((subject, subjectIndex) => (
+            <div key={`subject-${subjectIndex}`} className="mb-4">
+              <div className="flex justify-between">
+                <p className="text-sm font-semibold text-gray-600">
+                  {subject.subjectName}
+                </p>
+                <p className="text-sm font-semibold text-gray-600">
+                  {subject.chapter?.reduce((acc, chapter) => {
+                    return (
+                      acc +
+                      chapter.topic?.reduce((tAcc, topic) => {
+                        const topicName = topic.topicName?.trim();
+                        const matchedTopic = Object.keys(
+                          pickedQuestions?.[sectionId] || {}
+                        ).find(
+                          (key) =>
+                            key.trim().toLowerCase() ===
+                            topicName?.toLowerCase()
+                        );
+
+                        return (
+                          tAcc +
+                          (matchedTopic
+                            ? Object.keys(
+                                pickedQuestions[sectionId][matchedTopic]
+                              ).length
+                            : 0)
+                        );
+                      }, 0)
+                    );
+                  }, 0) || 0}
+                </p>
+              </div>
+
+              {subject.chapter?.map((chapter, chapterIndex) => (
+                <div key={`chapter-${chapterIndex}`} className="ml-2 mt-2">
+                  <div className="flex justify-between">
+                    <p className="text-sm font-semibold text-gray-600">
+                      {chapter.chapterName}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-600">
+                      {chapter.topic?.reduce((count, topic) => {
+                        const topicName = topic.topicName?.trim();
+                        const topicData =
+                          pickedQuestions?.[sectionId]?.[topicName] || {};
+                        return count + Object.keys(topicData).length;
+                      }, 0)}
+                    </p>
+                  </div>
+
+                  {chapter.topic?.map((topic, topicIndex) => {
+                    const topicName = topic.topicName?.trim();
+                    const topicData =
+                      pickedQuestions?.[sectionId]?.[topicName] || {};
+                    const pickedCount = Object.keys(topicData).length;
+
+                    return (
+                      <div
+                        key={`topic-${chapter.chapterName}-${topicName}`}
+                        className={`ml-4 flex justify-between text-sm border-l pl-3 cursor-pointer ${
+                          pickedCount > 0
+                            ? "text-green-600 font-semibold"
+                            : "text-gray-500 hover:text-indigo-600"
+                        }`}
+                        onClick={() => onSelectTopic(section, topic)}
+                      >
+                        <span style={{ fontSize: "1rem" }}>
+                          {topicName?.slice(0, 15) || "Unnamed Topic"}
+                        </span>
+                        <span>{pickedCount}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        {/* <div className="mb-4">
           <div className="flex justify-between">
             <p className="text-sm font-semibold text-gray-600">
               {selectedSubject.subjectName}
@@ -123,7 +198,7 @@ const QuestionDistributionSidebar = ({
               </div>
             );
           })}
-        </div>
+        </div> */}
       </div>
 
       <div className="mt-4 sticky bottom-0 bg-white">
@@ -131,7 +206,7 @@ const QuestionDistributionSidebar = ({
           className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
           onClick={handleSubmit}
         >
-          Review
+          Preview
         </button>
       </div>
     </div>
