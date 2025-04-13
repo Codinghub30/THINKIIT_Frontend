@@ -87,7 +87,12 @@ const SummaryPage = () => {
 
       const enrichedSections = matchedPattern.sections.map(
         (patternSection, index) => {
-          const dbSection = realSections[index] || {};
+          const dbSection =
+            realSections.find(
+              (sec) =>
+                sec.sectionName?.trim()?.toLowerCase() ===
+                patternSection.section?.trim()?.toLowerCase()
+            ) || {};
           return {
             ...patternSection,
             sectionId: dbSection._id || null,
@@ -108,14 +113,16 @@ const SummaryPage = () => {
         }
       );
 
-      const userSelectionFormatted = enrichedSections.map((section) => ({
+      const userSelectionFormatted = realSections.map((section) => ({
         section: section.sectionName,
-        selectedMax: section.maxQuestion,
-        minAnswerable: section.minQuestion,
-        marks: section.marks,
-        time: section.time,
-        CM: section.correctAnswerMarks,
-        NM: section.negativeMarks,
+        selectedMax: section.numberOfQuestions || "",
+        minAnswerable: section.minQuestionsAnswerable || "",
+        marks: section.marks || "",
+        time: section.testDuration || "",
+        CM: section.marksPerQuestion || "",
+        NM: section.negativeMarksPerWrongAnswer || "",
+        subjects: section.subjects.map((s) => s.subjectName).join(", "),
+        questionType: section.questionType || "",
       }));
 
       setSelectedExam({
@@ -343,7 +350,7 @@ const SummaryPage = () => {
                 </Typography>
               </Grid>
             </Grid>
-            {selectedExam?.sections?.map((section, sectionIndex) => (
+            {userSelectionData.map((section, sectionIndex) => (
               <Grid
                 container
                 spacing={1}
@@ -360,7 +367,7 @@ const SummaryPage = () => {
                 </Grid>
                 <Grid item xs={2}>
                   <Typography variant="body2">
-                    {section.subjects.join(", ")}
+                    {(section.subjects || "").toString()}
                   </Typography>
                 </Grid>
                 <Grid item xs={1}>
@@ -406,10 +413,15 @@ const SummaryPage = () => {
                   />
                 </Grid>
                 <Grid item xs={1}>
-                  <Typography variant="body2">{section.marks}</Typography>
+                  {console.log(userSelectionData)}
+                  <Typography variant="body2">
+                    {userSelectionData[sectionIndex]?.marks || "—"}
+                  </Typography>
                 </Grid>
                 <Grid item xs={1}>
-                  <Typography variant="body2">{section.time}</Typography>
+                  <Typography variant="body2">
+                    {userSelectionData[sectionIndex]?.time || "—"}
+                  </Typography>
                 </Grid>
               </Grid>
             ))}
